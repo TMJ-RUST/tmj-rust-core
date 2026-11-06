@@ -7,5 +7,5 @@ Sebelum menelusuri source, merencanakan perubahan, atau mengubah `tmj-rust-core`
 - `tmj-rust-core` dipakai bersama oleh `tmj-rust-auth` dan `tmj-rust-users` melalui Git dependency (`https://github.com/meij0hn/tmj-rust-core.git`, branch `main`).
 - Periksa dampak perubahan simbol, trait bound (`FromRef`), klaim JWT, key Redis, dan format serialisasi `ApiResponse`/`AppError` terhadap kedua service konsumen.
 - Setelah mengubah `tmj-rust-core`, perbarui dokumentasi di `docs/` dan `AI_CONTEXT.md`, push perubahan ke branch `main` (jika diminta), lalu jalankan `cargo update -p tmj-rust-core` dan `cargo check` pada `tmj-rust-auth` serta `tmj-rust-users`.
-- Selalu tulis ulang (rewrite/update) `../TMJ-Service.postman_collection.json` jika perubahan di `tmj-rust-core` mengubah struktur request atau response HTTP pada service konsumen.
+- Perbarui YAML request dan saved response service konsumen yang terdampak di `../tmj-rust-api-collection/` jika perubahan core mengubah kontrak HTTP. Repo collection adalah satu-satunya sumber; JSON Postman hanya export sesuai kebutuhan, bukan salinan manual.
 - Jangan memasukkan nilai `.env`, secret, atau kredensial nyata ke dalam kode maupun dokumentasi.
