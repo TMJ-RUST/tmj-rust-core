@@ -18,3 +18,4 @@ Sebelum menelusuri source, menyusun rencana teknis, atau mengubah kode:
    - `modules/infrastructure.md` untuk `init_db` dan `init_redis`.
 3. Verifikasi source aktual di `src/` serta efeknya pada `tmj-rust-auth` dan `tmj-rust-users`.
 4. Perbarui dokumen di `docs/` dan `AI_CONTEXT.md` setiap kali kontrak, tipe publik, atau perilaku berubah.
+5. Selalu tulis ulang (rewrite/update) `/Users/meijohn/Desktop/DEV/tmj-rust/TMJ-Service.postman_collection.json` (`../TMJ-Service.postman_collection.json` dari root `tmj-rust-core`) jika perubahan pada `tmj-rust-core` memengaruhi kontrak request atau response HTTP (seperti `ApiResponse`, `PaginatedData`, `AppError`, header/token autentikasi) pada `tmj-auth-service` maupun `tmj-users-service`.
