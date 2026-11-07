@@ -2025,6 +2025,7 @@ dependencies = [
  "chrono",
  "http-body",
  "jsonwebtoken",
+ "percent-encoding",
  "redis",
  "serde",
  "serde_json",

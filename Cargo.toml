@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.8", features = ["macros"] }
 http-body = "1"
+percent-encoding = "2"
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio-rustls",
     "postgres",

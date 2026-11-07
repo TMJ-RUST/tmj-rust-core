@@ -13,14 +13,15 @@ use axum::{
     response::Response,
 };
 use http_body::{Frame, SizeHint};
+use percent_encoding::percent_decode_str;
 use serde_json::Value;
 use uuid::Uuid;
 
 const BODY_LIMIT: usize = 16 * 1024;
 const REDACTED: &str = "[REDACTED]";
 
-/// Emit one redacted INBOUND/OUTBOUND event without consuming request bodies or
-/// delaying response frames. Enable with `RUST_LOG=tmj_http=info`.
+/// Emit one INBOUND/OUTBOUND event, masking only password fields, without
+/// consuming request bodies or delaying frames. Enable with `RUST_LOG=tmj_http=info`.
 pub async fn log_http(request: Request, next: Next) -> Response {
     if !tracing::enabled!(target: "tmj_http", tracing::Level::INFO) {
         return next.run(request).await;
@@ -40,7 +41,7 @@ pub async fn log_http(request: Request, next: Next) -> Response {
         });
     writeln!(
         text,
-        "========================================================================\nINBOUND >>"
+        "\n========================================================================\nINBOUND >>"
     )
     .unwrap();
     match request_id {
@@ -107,11 +108,14 @@ fn write_uri(text: &mut String, uri: &Uri) {
             if index != 0 {
                 text.push('&');
             }
-            // Bare parameters can themselves be secrets; only named keys survive.
             if let Some((name, _)) = parameter.split_once('=') {
-                write!(text, "{name:?}={REDACTED}").unwrap();
+                if private_field(&percent_decode_str(name).decode_utf8_lossy()) {
+                    write!(text, "{name}={REDACTED}").unwrap();
+                } else {
+                    text.push_str(parameter);
+                }
             } else {
-                text.push_str(REDACTED);
+                text.push_str(parameter);
             }
         }
     }
@@ -121,33 +125,12 @@ fn write_headers(text: &mut String, headers: &HeaderMap) {
     text.push('{');
     for (name, value) in headers {
         write!(text, "{{{name}=[").unwrap();
-        // Unknown headers are private by default, including future auth schemes.
-        if !value.is_sensitive()
-            && matches!(
-                name.as_str(),
-                "accept"
-                    | "accept-encoding"
-                    | "accept-language"
-                    | "content-type"
-                    | "content-length"
-                    | "content-encoding"
-                    | "host"
-                    | "connection"
-                    | "user-agent"
-                    | "traceparent"
-                    | "vary"
-                    | "x-request-id"
-                    | "x-correlation-id"
-                    | "access-control-allow-origin"
-                    | "access-control-allow-methods"
-                    | "access-control-allow-headers"
-                    | "access-control-expose-headers"
-                    | "access-control-max-age"
-            )
-        {
-            write!(text, "{value:?}").unwrap();
-        } else {
+        if private_field(name.as_str()) {
             text.push_str(REDACTED);
+        } else {
+            // Render bytes explicitly: HeaderValue's Debug hides sensitive values,
+            // while this logger intentionally masks only password-named fields.
+            write!(text, "\"{}\"", value.as_bytes().escape_ascii()).unwrap();
         }
         text.push_str("]}");
     }
@@ -171,48 +154,9 @@ fn is_json(headers: &HeaderMap) -> bool {
 }
 
 fn private_field(key: &str) -> bool {
-    // Normalize camelCase/snake_case/kebab-case without allocating per field.
-    let mut normalized = [0_u8; 128];
-    let mut length = 0;
-    for byte in key.bytes().filter(|byte| !matches!(byte, b'_' | b'-')) {
-        if length == normalized.len() || !byte.is_ascii() {
-            return true;
-        }
-        normalized[length] = byte.to_ascii_lowercase();
-        length += 1;
-    }
-    let key = std::str::from_utf8(&normalized[..length]).unwrap();
-    [
-        "password",
-        "token",
-        "secret",
-        "otp",
-        "signature",
-        "apikey",
-        "authorization",
-        "cookie",
-    ]
-    .iter()
-    .any(|sensitive| key.contains(sensitive))
-        || matches!(
-            key,
-            "reference"
-                | "variables"
-                | "subject"
-                | "body"
-                | "bodyhtml"
-                | "bodytext"
-                | "errormessage"
-                | "messageerror"
-                | "email"
-                | "username"
-                | "identifier"
-                | "recipient"
-                | "cc"
-                | "bcc"
-                | "replyto"
-                | "destinationurl"
-        )
+    key.as_bytes()
+        .windows(b"password".len())
+        .any(|part| part.eq_ignore_ascii_case(b"password"))
 }
 
 fn redact_json(value: &mut Value) {

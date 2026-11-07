@@ -89,7 +89,7 @@ fn body_from_log(text: &str) -> Value {
 }
 
 #[tokio::test]
-async fn redacts_nested_credentials_and_private_headers_without_changing_response() {
+async fn masks_only_password_fields_in_json_headers_and_query() {
     let logs = Logs::default();
     let text = async {
         let router = Router::new().route("/probe", get(|| async {
@@ -98,9 +98,13 @@ async fn redacts_nested_credentials_and_private_headers_without_changing_respons
                 "data": [{
                     "access_token": "synthetic-access",
                     "refreshToken": "synthetic-refresh",
-                    "new-password": "synthetic-password",
-                    "nested": {"otp_code": "synthetic-otp", "resetToken": "synthetic-reset"},
-                    "variables": {"custom": "synthetic-email-content"},
+                    "password": "synthetic-password",
+                    "new-password": "synthetic-new-password",
+                    "nested": {
+                        "otp_code": "synthetic-otp", "resetToken": "synthetic-reset",
+                        "PassWord_Hash": "synthetic-password-hash"
+                    },
+                    "variables": {"custom": "synthetic-email-content", "newPassword": "synthetic-variable-password"},
                     "email": "synthetic@example.invalid",
                     "subject": "synthetic-subject",
                     "bodyHtml": "synthetic-html",
@@ -110,39 +114,41 @@ async fn redacts_nested_credentials_and_private_headers_without_changing_respons
             });
             json_response(Body::from(payload.to_string()))
         })).layer(from_fn(log_http));
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .uri("/probe?token=synthetic-query&synthetic-bare-secret")
-                    .header("authorization", "synthetic-auth")
-                    .header("x-api-key", "synthetic-key")
-                    .header("upstash-signature", "synthetic-signature")
-                    .header("x-custom-private", "synthetic-custom")
-                    .header("x-request-id", "smoke-request-1")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let mut authorization = axum::http::HeaderValue::from_static("synthetic-auth");
+        authorization.set_sensitive(true);
+        let response = router.oneshot(Request::builder()
+            .uri("/probe?token=synthetic-query&synthetic-bare-value&password=synthetic-query-password&newPassword=synthetic-query-new-password&%70ass%77ord=synthetic-encoded-password")
+            .header("authorization", authorization)
+            .header("x-api-key", "synthetic-key")
+            .header("upstash-signature", "synthetic-signature")
+            .header("x-custom-private", "synthetic-custom")
+            .header("x-password", "synthetic-header-password")
+            .header("x-request-id", "smoke-request-1")
+            .body(Body::empty()).unwrap()).await.unwrap();
         assert_eq!(response.status(), StatusCode::CREATED);
         assert_eq!(response.headers()["set-cookie"], "synthetic-session");
-        let wire: Value =
-            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
-                .unwrap();
-        assert_eq!(wire["data"][0]["access_token"], "synthetic-access");
-        assert_eq!(wire["data"][0]["nested"]["otp_code"], "synthetic-otp");
+        let wire: Value = serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+        assert_eq!(wire["data"][0]["password"], "synthetic-password");
+        assert_eq!(wire["data"][0]["nested"]["PassWord_Hash"], "synthetic-password-hash");
         logs.text()
-    }
-    .with_subscriber(logs.subscriber())
-    .await;
+    }.with_subscriber(logs.subscriber()).await;
     assert_eq!(text.matches("INBOUND >>").count(), 1);
     assert_eq!(text.matches("OUTBOUND <<").count(), 1);
-    assert!(text.contains("smoke-request-1"));
-    assert!(text.contains("{201}"));
-    for secret in [
+    for password in [
+        "synthetic-password",
+        "synthetic-new-password",
+        "synthetic-password-hash",
+        "synthetic-variable-password",
+        "synthetic-query-password",
+        "synthetic-query-new-password",
+        "synthetic-encoded-password",
+        "synthetic-header-password",
+    ] {
+        assert!(!text.contains(password), "password logged: {password}");
+    }
+    for visible in [
         "synthetic-access",
         "synthetic-refresh",
-        "synthetic-password",
         "synthetic-otp",
         "synthetic-reset",
         "synthetic-email-content",
@@ -151,19 +157,21 @@ async fn redacts_nested_credentials_and_private_headers_without_changing_respons
         "synthetic-html",
         "synthetic-reference",
         "synthetic-query",
-        "synthetic-bare-secret",
+        "synthetic-bare-value",
         "synthetic-auth",
         "synthetic-key",
         "synthetic-signature",
         "synthetic-custom",
         "synthetic-session",
     ] {
-        assert!(!text.contains(secret), "leaked {secret}");
+        assert!(text.contains(visible), "unexpected masking: {visible}");
     }
     let logged = body_from_log(&text);
     assert_eq!(logged["statusCode"], "00");
     assert_eq!(logged["data"][0]["count"], 7);
-    assert_eq!(logged["data"][0]["nested"]["otp_code"], "[REDACTED]");
+    assert_eq!(logged["data"][0]["password"], "[REDACTED]");
+    assert_eq!(logged["data"][0]["nested"]["PassWord_Hash"], "[REDACTED]");
+    assert_eq!(logged["data"][0]["nested"]["otp_code"], "synthetic-otp");
 }
 
 #[tokio::test]
@@ -216,7 +224,7 @@ async fn captures_split_utf8_json_and_preserves_trailers() {
     .with_subscriber(logs.subscriber())
     .await;
     assert_eq!(body_from_log(&logs.text())["message"], "café");
-    assert!(!logs.text().contains("synthetic-reset"));
+    assert_eq!(body_from_log(&logs.text())["resetToken"], "synthetic-reset");
     assert_eq!(logs.text().matches("OUTBOUND <<").count(), 1);
 }
 
