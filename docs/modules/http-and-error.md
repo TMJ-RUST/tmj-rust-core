@@ -21,3 +21,19 @@ Menyatukan seluruh varian error dari `tmj-rust-auth` dan `tmj-rust-users`:
 | `Forbidden(_)` | `403 Forbidden` | `"05"` | `"Access Forbidden"` |
 | `UserAlreadyExists(_)`, `Conflict(_)` (termasuk unique violation SQLx) | `409 Conflict` | `"09"` | `"Resource Conflict"` |
 | `DatabaseError(_)`, `InternalServerError(_)` | `500 Internal Server Error` | `"99"` | `"Internal Server Error"` |
+
+## 4. Logging REST (`src/middleware/http_logging.rs`)
+
+`log_http` dipasang sebagai middleware Axum `from_fn` di auth, users, dan notification, di luar CORS agar preflight dan header respons CORS ikut tercatat. Logger mengirim satu event `INFO` bertarget `tmj_http` per pertukaran HTTP; aktifkan dengan `RUST_LOG=tmj_http=info` atau tambahkan directive tersebut ke filter service. `tmj_http=off` menonaktifkan pencatatan tanpa membaca body.
+
+Format event: pemisah `========================================================================`, `INBOUND >>` (request ID, URI, method, headers), `OUTBOUND <<` (status HTTP numerik, headers, response body), lalu `-->Nms`. Satu event menjaga pasangan request/response tetap bersama ketika request berjalan bersamaan; prefix waktu/level dari tracing tetap ada.
+
+- Request body tidak dibaca atau dicatat. Nilai query dan parameter tanpa `=` disamarkan. Path dan nama query tetap terlihat.
+- Header hanya menampilkan nilai untuk allowlist metadata HTTP (content type/length/encoding, accept, host, connection, user-agent, traceparent, request/correlation ID, Vary, dan header CORS yang dikenal). Header lain serta nilai bertanda sensitive menjadi `[REDACTED]`, termasuk Authorization, cookie, API key, dan Upstash-Signature.
+- Hanya body JSON (`application/json` atau `application/*+json`) tanpa encoding non-identity yang diinspeksi. Maksimal 16 KiB payload disalin selama frame dikirim ke klien; frame data, trailer, status, header, dan error stream tidak diubah. Tidak ada buffering seluruh respons sebelum pengiriman.
+- Redaksi JSON rekursif mencakup nama field yang mengandung password/token/secret/OTP/signature/API key/authorization/cookie, dengan normalisasi huruf dan pemisah `_`/`-`. Reference recovery, email/username/identifier, penerima/cc/bcc/replyTo, destinationUrl, variables, subject, body/bodyHtml/bodyText, dan detail error juga disamarkan. Redaksi berbasis nama field, bukan pendeteksi rahasia pada teks bebas; jangan menyimpan kredensial di field lain.
+- Body terlalu besar, non-JSON, streaming SSE/biner, encoded, JSON rusak, stream gagal, atau tidak selesai dikonsumsi memakai penanda omission; potongan mentah tidak pernah dicatat. Body kosong ditandai `[empty]`.
+- Durasi JSON dihitung sampai frame terakhir/akhir stream; jika body dilewati sejak awal, durasi berhenti ketika header respons tersedia. Log bukan bukti seluruh byte sudah diterima klien. Saat stream terputus, log dicatat ketika body dilepas.
+- Request ID log memakai `x-request-id`, lalu `x-correlation-id`, jika berisi 1–128 karakter ASCII alfanumerik/`-_.`; selain itu UUID baru. ID ini hanya untuk log, tidak mengganti extractor `RequestId`, `reffCode`, atau header API.
+
+Pengujian perilaku: `cargo test --test http_logging` memeriksa redaksi bersarang, batas 16 KiB, JSON UTF-8 lintas-frame, trailer, serta JSON rusak/stream error/tidak selesai. Smoke HTTP terisolasi juga telah memeriksa delapan POST bersamaan, JSON bertahap, respons besar, biner, SSE, dan HTTP 204.

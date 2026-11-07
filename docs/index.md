@@ -6,7 +6,7 @@ Dokumentasi implementasi library bersama `tmj-rust-core`, diperiksa pada 5 Novem
 | --- | --- | --- |
 | Peta modul & arsitektur | [Module architecture](architecture/module-architecture.md) | `src/lib.rs`, seluruh submodul |
 | JWT, Argon2, extractor & sesi Redis | [Auth & session](modules/auth-and-session.md) | `src/utils/`, `src/middleware/auth.rs`, `src/repository/session.rs`, `src/entity/role.rs` |
-| Envelope HTTP, error & request ID | [HTTP & error](modules/http-and-error.md) | `src/dto/response.rs`, `src/error.rs`, `src/middleware/request_id.rs` |
+| Envelope HTTP, error, request ID & logging REST | [HTTP & error](modules/http-and-error.md) | `src/dto/response.rs`, `src/error.rs`, `src/middleware/request_id.rs`, `src/middleware/http_logging.rs` |
 | Koneksi DB & Redis | [Infrastructure](modules/infrastructure.md) | `src/config/mod.rs`, `src/config/database.rs`, `src/config/redis.rs` |
 
 ## Peran dalam Ekosistem TMJ
