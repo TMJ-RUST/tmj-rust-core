@@ -22,6 +22,8 @@ Menyatukan seluruh varian error dari `tmj-rust-auth` dan `tmj-rust-users`:
 | `UserAlreadyExists(_)`, `Conflict(_)` (termasuk unique violation SQLx) | `409 Conflict` | `"09"` | `"Resource Conflict"` |
 | `DatabaseError(_)`, `InternalServerError(_)` | `500 Internal Server Error` | `"99"` | `"Internal Server Error"` |
 
+`messageError` tidak lagi mengambil detail dinamis dari setiap varian error. Respons memakai mapping constant per `statusCode`, lalu middleware `error_catalog::resolve_error_message` dapat menggantinya dengan hasil HGET Redis pada setiap error. HTTP status, `statusCode`, `message`, referensi dan header tetap. Tanpa middleware, envelope tetap valid dengan constant default. Lihat [katalog error dan parameter](parameters.md) untuk pemasangan, fallback, batas waktu lookup dan API error recovery.
+
 ## 4. Logging REST (`src/middleware/http_logging.rs`)
 
 `log_http` dipasang sebagai middleware Axum `from_fn` di auth, users, dan notification, di luar CORS agar preflight dan header respons CORS ikut tercatat. Logger mengirim satu event `INFO` bertarget `tmj_http` per pertukaran HTTP; aktifkan dengan `RUST_LOG=tmj_http=info` atau tambahkan directive tersebut ke filter service. `tmj_http=off` menonaktifkan pencatatan tanpa membaca body.

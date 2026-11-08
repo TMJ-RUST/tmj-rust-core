@@ -16,6 +16,7 @@ Crate ini diintegrasikan ke service konsumen melalui dependency Git (`https://gi
 | Mengubah JWT, password, extractor auth, atau sesi Redis | [Auth & session module](docs/modules/auth-and-session.md) |
 | Mengubah `ApiResponse`, `AppError`, `RequestId`, atau logging REST | [HTTP & error module](docs/modules/http-and-error.md) |
 | Mengubah koneksi PostgreSQL / Redis | [Infrastructure module](docs/modules/infrastructure.md) |
+| Membaca parameter global atau mengganti messageError per statusCode | [Parameter & error catalogue](docs/modules/parameters.md) |
 
 ## Invariants penting
 
@@ -24,3 +25,4 @@ Crate ini diintegrasikan ke service konsumen melalui dependency Git (`https://gi
 3. **Envelope & Error (`ApiResponse` & `AppError`)**: Seluruh field `ApiResponse`, `PaginationMeta`, dan `PaginatedData` diserialisasi dalam `camelCase` (`statusCode`, `reffCode`, `messageError`, `totalItems`, `totalPages`). Kode status bisnis: `"00"` sukses, `"01"` gagal autentikasi, `"02"` unauthorized/token, `"03"` validasi, `"04"` not found, `"05"` forbidden, `"09"` conflict, `"99"` internal/DB error. Sumber: [src/dto/response.rs](src/dto/response.rs), [src/error.rs](src/error.rs).
    Logging REST bersama: `middleware::http_logging::log_http` untuk middleware Axum `from_fn`, satu event multiline `tmj_http=info` per request/response. Hanya field bernama password (termasuk newPassword/password_hash, tanpa peka kapital) pada header/query/JSON yang disamarkan; authorization/token/OTP/nilai lain dicatat. Capture JSON maksimal 16 KiB, tanpa membaca request body atau menahan seluruh response stream. Batasi akses/retensi log; detail ada di dokumen HTTP.
 4. **Dampak lintas-repo**: Setiap perubahan publik di `tmj-rust-core` wajib di-commit & push ke repo `tmj-rust-core`, lalu dijalankan `cargo update -p tmj-rust-core` pada `tmj-rust-auth` dan `tmj-rust-users`.
+5. **Parameter dan katalog error**: `parameters::ParameterCache` membaca hash Redis global `tmj:parameters:system` dan `tmj:parameters:errors`, tanpa cache lokal/TTL/retry. Lookup maksimal 250 ms; numeric default eksplisit ada di consumer, fallback error berupa mapping constant per statusCode di core. `middleware::error_catalog::resolve_error_message` mengoverride hanya messageError pada respons bertanda `AppError`/`error::catalog_error_response`, sebelum logger. Error standalone tetap envelope valid melalui body lazy satu kali serialisasi. Integrasi mencakup auth/users/notification dan service parameters; detail di [parameters](docs/modules/parameters.md).

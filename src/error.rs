@@ -1,11 +1,17 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
-use uuid::Uuid;
 
-use crate::dto::ApiResponse;
+/// Build a standard application error that can be resolved by error_catalog.
+/// Without that middleware, its body still renders the per-code constant default.
+pub fn catalog_error_response(
+    http_status: StatusCode,
+    status_code: &'static str,
+    message: &'static str,
+) -> Response {
+    crate::middleware::error_catalog::response(http_status, status_code, message)
+}
 
 #[derive(Debug)]
 pub enum AppError {
@@ -74,91 +80,36 @@ impl From<jsonwebtoken::errors::Error> for AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (http_status, status_code, message, message_error) = match &self {
-            AppError::DatabaseError(e) => {
-                tracing::error!("Database error: {:?}", e);
+        let (http_status, status_code, message) = match &self {
+            AppError::DatabaseError(error) => {
+                tracing::error!("Database error: {:?}", error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "99",
                     "Internal Server Error",
-                    "Internal database error occurred".to_string(),
                 )
             }
-            AppError::InternalServerError(e) => {
-                tracing::error!("Internal server error: {}", e);
+            AppError::InternalServerError(error) => {
+                tracing::error!("Internal server error: {}", error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "99",
                     "Internal Server Error",
-                    e.clone(),
                 )
             }
-            AppError::InvalidCredentials => (
-                StatusCode::UNAUTHORIZED,
-                "01",
-                "Authentication Failed",
-                self.to_string(),
-            ),
-            AppError::InvalidToken => (
-                StatusCode::UNAUTHORIZED,
-                "02",
-                "Unauthorized",
-                self.to_string(),
-            ),
-            AppError::TokenExpired => (
-                StatusCode::UNAUTHORIZED,
-                "02",
-                "Unauthorized",
-                self.to_string(),
-            ),
-            AppError::Unauthorized(msg) => (
-                StatusCode::UNAUTHORIZED,
-                "02",
-                "Unauthorized",
-                msg.clone(),
-            ),
-            AppError::ValidationError(msg) => (
-                StatusCode::BAD_REQUEST,
-                "03",
-                "Validation Error",
-                msg.clone(),
-            ),
-            AppError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                "04",
-                "Resource Not Found",
-                msg.clone(),
-            ),
-            AppError::Forbidden(msg) => (
-                StatusCode::FORBIDDEN,
-                "05",
-                "Access Forbidden",
-                msg.clone(),
-            ),
-            AppError::UserAlreadyExists(msg) | AppError::Conflict(msg) => (
-                StatusCode::CONFLICT,
-                "09",
-                "Resource Conflict",
-                msg.clone(),
-            ),
+            AppError::InvalidCredentials => {
+                (StatusCode::UNAUTHORIZED, "01", "Authentication Failed")
+            }
+            AppError::InvalidToken | AppError::TokenExpired | AppError::Unauthorized(_) => {
+                (StatusCode::UNAUTHORIZED, "02", "Unauthorized")
+            }
+            AppError::ValidationError(_) => (StatusCode::BAD_REQUEST, "03", "Validation Error"),
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, "04", "Resource Not Found"),
+            AppError::Forbidden(_) => (StatusCode::FORBIDDEN, "05", "Access Forbidden"),
+            AppError::UserAlreadyExists(_) | AppError::Conflict(_) => {
+                (StatusCode::CONFLICT, "09", "Resource Conflict")
+            }
         };
-
-        let reff_code = Uuid::new_v4().to_string();
-        let body = ApiResponse::<()>::error(
-            status_code,
-            reff_code.clone(),
-            message,
-            message_error,
-        );
-
-        (
-            http_status,
-            [(
-                axum::http::header::HeaderName::from_static("x-request-id"),
-                reff_code,
-            )],
-            Json(body),
-        )
-            .into_response()
+        catalog_error_response(http_status, status_code, message)
     }
 }
