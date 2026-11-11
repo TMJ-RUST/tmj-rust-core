@@ -1,5 +1,7 @@
 # Module architecture (`tmj-rust-core`)
 
+Stack konteks: Rust 2021, Axum 0.8, SQLx 0.8 (PostgreSQL), Redis 0.27 (`ConnectionManager`), jsonwebtoken 9.3, Argon2 0.5, Serde, tracing, chrono, uuid, dan Utoipa 6.0. Requirement dependency ada di [Cargo.toml](../../Cargo.toml); ini bukan laporan versi deployment. Dokumentasi awal berasal dari inspeksi statis 5 November 2026, dengan panduan parameter/rollout diperbarui 11 November 2026, bukan bukti pengujian runtime.
+
 | Modul / Konsep | Simbol Publik | Source |
 | --- | --- | --- |
 | Crate root | `config`, `dto`, `entity`, `error`, `middleware`, `parameters`, `repository`, `utils` | [src/lib.rs](../../src/lib.rs) |

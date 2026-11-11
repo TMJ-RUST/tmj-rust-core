@@ -1,19 +1,20 @@
-# Dokumentasi TMJ Rust Core (`tmj-rust-core`)
+# Dokumentasi TMJ Rust Core
 
-Dokumentasi implementasi library bersama `tmj-rust-core`, diperiksa pada 5 November 2026. Entry point ringkas untuk agen: [AI_CONTEXT.md](../AI_CONTEXT.md).
+Aturan kerja: [AGENTS.md](../AGENTS.md). Ringkasan library: [AI_CONTEXT.md](../AI_CONTEXT.md). Pilih halaman sesuai tugas; tabel berikut juga menetapkan dokumen utama tiap topik. Halaman ringkasan cukup menautkan detail, bukan menyalinnya.
 
-| Topik | Dokumen | Sumber utama |
-| --- | --- | --- |
-| Peta modul & arsitektur | [Module architecture](architecture/module-architecture.md) | `src/lib.rs`, seluruh submodul |
-| JWT, Argon2, extractor & sesi Redis | [Auth & session](modules/auth-and-session.md) | `src/utils/`, `src/middleware/auth.rs`, `src/repository/session.rs`, `src/entity/role.rs` |
-| Envelope HTTP, error, request ID & logging REST | [HTTP & error](modules/http-and-error.md) | `src/dto/response.rs`, `src/error.rs`, `src/middleware/request_id.rs`, `src/middleware/http_logging.rs` |
-| Parameter global & katalog messageError Redis | [Parameters](modules/parameters.md) | `src/parameters.rs`, `src/middleware/error_catalog.rs`, `src/error.rs` |
-| Koneksi DB & Redis | [Infrastructure](modules/infrastructure.md) | `src/config/mod.rs`, `src/config/database.rs`, `src/config/redis.rs` |
+| Tugas | Dokumen yang dibaca |
+| --- | --- |
+| Memahami struktur, dependency, dan simbol publik | [Module architecture](architecture/module-architecture.md) |
+| Mengubah JWT, password, extractor, atau sesi Redis | [Auth & session](modules/auth-and-session.md) |
+| Mengubah envelope, pagination, error, request ID, atau logging REST | [HTTP & error](modules/http-and-error.md) |
+| Mengubah pembacaan parameter, fallback, atau katalog `messageError` | [Parameters](modules/parameters.md) |
+| Mengubah koneksi PostgreSQL/Redis atau integrasi migrator | [Infrastructure](modules/infrastructure.md) |
+| Merencanakan rollout katalog/schema lintas konsumen | [Kontrak parameter](modules/parameters.md), lalu [cutover parameters](../../tmj-rust-parameters/docs/operations.md#coordinated-consumer-cutover) |
 
-## Peran dalam Ekosistem TMJ
+## Batas dokumentasi lintas repo
 
-`tmj-rust-core` menyatukan komponen lintas-service untuk `tmj-rust-auth`, `tmj-rust-users`, `tmj-rust-notification`, dan `tmj-rust-parameters`: infrastruktur, validasi sesi Redis, pembuatan/verifikasi JWT, hashing password, envelope respons, pemetaan error HTTP, dan pembacaan katalog Redis.
+- Core memiliki kontrak library: JWT/sesi, envelope/error/logging, koneksi, dan pembacaan parameter. Flow login/recovery dimiliki [auth](../../tmj-rust-auth/AI_CONTEXT.md); RBAC database dimiliki [users](../../tmj-rust-users/AI_CONTEXT.md).
+- Schema katalog, publisher, bootstrap, dan koordinasi migrasi dimiliki [parameters](../../tmj-rust-parameters/docs/index.md). Core tidak menyalin prosedur tersebut.
+- Untuk perubahan integrasi, lanjutkan ke `AGENTS.md` dan konteks konsumen yang terdampak, termasuk [notification](../../tmj-rust-notification/AI_CONTEXT.md). Kontrak endpoint tetap didokumentasikan pada service; request dan saved response dipelihara di [repo collection](../../tmj-rust-api-collection/).
 
-Crate ini ditarik melalui Git (`https://github.com/meij0hn/tmj-rust-core.git`, branch `main`) dan dikompilasi langsung ke dalam binary service pemanggil.
-
-Panduan rollout parameter diperbarui 11 November 2026: startup parameters harus sukses memublikasikan katalog sebelum konsumen berjalan, seluruh binary membawa histori migrasi identik hingga 0009, dan perpindahan schema memerlukan penghentian binary lama. Redis tetap code→value walaupun parameter kini memakai module/code/value. Lihat [parameters](modules/parameters.md) dan [infrastructure](modules/infrastructure.md); pembaruan ini bukan laporan pengujian runtime.
+Tautan lintas repo membutuhkan checkout saudara. Jika tidak tersedia, nyatakan batas pemeriksaan. Dokumen kontrak menjelaskan implementasi; perintah verifikasi dan catatan pengujian terdahulu bukan bukti bahwa pemeriksaan telah dijalankan pada perubahan saat ini.

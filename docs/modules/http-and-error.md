@@ -5,12 +5,14 @@
 - `PaginationMeta` & `PaginatedData<T>`: Struktur paginasi standar (`items`, `pagination: { page, limit, totalItems, totalPages }`).
 - `MessageResponse`: DTO pesan status sederhana untuk dokumentasi skema OpenAPI.
 
+`statusCode` adalah kode bisnis: `"00"` untuk sukses; kode kegagalan dijelaskan pada tabel `AppError` di bawah. Kode bisnis berbeda dari status HTTP. Field `ApiResponse`, `PaginationMeta`, dan `PaginatedData` memakai serialisasi `camelCase`.
+
 ## 2. Extractor `RequestId` (`src/middleware/request_id.rs`)
 - Membaca header `x-request-id`, atau fallback ke `x-correlation-id`.
 - Bila kedua header tidak ada atau kosong, otomatis membangkitkan `Uuid::new_v4()`.
 
 ## 3. `AppError` (`src/error.rs`)
-Menyatukan seluruh varian error dari `tmj-rust-auth` dan `tmj-rust-users`:
+Menyediakan varian error bersama untuk auth/users/notification/parameters:
 
 | Varian `AppError` | HTTP Status | `statusCode` | `message` |
 | --- | --- | --- | --- |

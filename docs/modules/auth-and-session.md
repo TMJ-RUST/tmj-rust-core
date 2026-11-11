@@ -11,6 +11,10 @@
 | `SessionRepository` | [src/repository/session.rs](../../src/repository/session.rs) | Operasi Redis untuk key `session:user:{id}` (`save_session`, `get_active_session_id`, `get_session_tokens`, `delete_session`, `ping`) |
 | `AuthenticatedUser` | [src/middleware/auth.rs](../../src/middleware/auth.rs) | Extractor Axum yang memvalidasi header `Bearer <token>`, memastikan `token_type == "access"`, mem-parsing `user_id: Uuid`, dan mencocokkan `claims.jti` dengan `session_id` aktif di Redis |
 
+## Kontrak sesi Redis
+
+Key `session:user:{user_id}` menyimpan hash fields `session_id`, `refresh_token`, `user_id`, `username`, dan `role`, dengan TTL sesuai masa berlaku refresh token. Login/refresh/logout di auth dan extractor `AuthenticatedUser` pada konsumen bergantung pada kontrak ini. Sumber: [SessionRepository](../../src/repository/session.rs) dan [extractor auth](../../src/middleware/auth.rs).
+
 ## Kontrak Integrasi `AppState`
 
 Agar handler di suatu service dapat memakai `AuthenticatedUser`, `AppState` service tersebut wajib menyediakan implementasi:
