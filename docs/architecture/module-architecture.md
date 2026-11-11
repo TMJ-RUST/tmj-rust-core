@@ -2,7 +2,7 @@
 
 | Modul / Konsep | Simbol Publik | Source |
 | --- | --- | --- |
-| Crate root | `config`, `dto`, `entity`, `error`, `middleware`, `repository`, `utils` | [src/lib.rs](../../src/lib.rs) |
+| Crate root | `config`, `dto`, `entity`, `error`, `middleware`, `parameters`, `repository`, `utils` | [src/lib.rs](../../src/lib.rs) |
 | Config & koneksi | `init_db`, `init_redis`, `JwtAccessSecret` | [config/mod.rs](../../src/config/mod.rs), [database.rs](../../src/config/database.rs), [redis.rs](../../src/config/redis.rs) |
 | Entity bersama | `UserRole` (`User`, `Admin`) | [entity/role.rs](../../src/entity/role.rs) |
 | DTO bersama | `ApiResponse<T>`, `PaginatedData<T>`, `PaginationMeta`, `MessageResponse` | [dto/response.rs](../../src/dto/response.rs) |

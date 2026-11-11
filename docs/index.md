@@ -12,6 +12,8 @@ Dokumentasi implementasi library bersama `tmj-rust-core`, diperiksa pada 5 Novem
 
 ## Peran dalam Ekosistem TMJ
 
-`tmj-rust-core` menyatukan komponen lintas-service agar `tmj-rust-auth` dan `tmj-rust-users` tidak menduplikasi kode infrastruktur, validasi sesi Redis, pembuatan/verifikasi JWT, hashing password, envelope respons, maupun pemetaan error HTTP.
+`tmj-rust-core` menyatukan komponen lintas-service untuk `tmj-rust-auth`, `tmj-rust-users`, `tmj-rust-notification`, dan `tmj-rust-parameters`: infrastruktur, validasi sesi Redis, pembuatan/verifikasi JWT, hashing password, envelope respons, pemetaan error HTTP, dan pembacaan katalog Redis.
 
 Crate ini ditarik melalui Git (`https://github.com/meij0hn/tmj-rust-core.git`, branch `main`) dan dikompilasi langsung ke dalam binary service pemanggil.
+
+Panduan rollout parameter diperbarui 11 November 2026: startup parameters harus sukses memublikasikan katalog sebelum konsumen berjalan, seluruh binary membawa histori migrasi identik hingga 0009, dan perpindahan schema memerlukan penghentian binary lama. Redis tetap code→value walaupun parameter kini memakai module/code/value. Lihat [parameters](modules/parameters.md) dan [infrastructure](modules/infrastructure.md); pembaruan ini bukan laporan pengujian runtime.

@@ -6,10 +6,14 @@
 
 | Redis hash | Field | Value |
 | --- | --- | --- |
-| `tmj:parameters:system` | `parameter_key` global | String |
+| `tmj:parameters:system` | `code` unik global | String `value` |
 | `tmj:parameters:errors` | `status_code`, termasuk nol di depan | String `messageError` |
 
-Cache tidak memiliki TTL. CRUD service pengelola mencoba publikasi setelah commit DB; refresh manual memulihkan publikasi yang gagal. Tidak ada retry worker/outbox. Namespace sesi dan state recovery tidak dibersihkan saat refresh katalog.
+Cache tidak memiliki TTL. Setelah migrasi, startup parameters memublikasikan kedua katalog PostgreSQL sebelum membuka HTTP; kegagalan lock/snapshot/publikasi menggagalkan startup. Wajibkan startup tersebut sukses sebelum rollout konsumen. Tidak diperlukan JWT/operator atau refresh manual untuk publikasi awal. CRUD service pengelola mencoba publikasi setelah commit DB; `cacheSynced:false` tetap berarti DB tersimpan dan memerlukan pemulihan publikasi, bukan pengulangan mutasi. Refresh manual tersedia saat berjalan. Tidak ada retry worker/outbox. Namespace sesi dan state recovery tidak dibersihkan saat refresh katalog.
+
+Migrasi 0008 mengganti `parameter_key`/`parameter_value` menjadi `code`/`value`, serta menambahkan `module` wajib (data lama `global`, tanpa default insert baru). Module hanya metadata: lookup Redis tetap code→value, bukan module:code, dan konstanta lookup konsumen tidak berubah. SQL/DTO API parameters lama tidak kompatibel dengan module/code/value; core tetap membaca hash yang sama.
+
+Migrasi 0009 memindahkan katalog ke `parameter.m_system_parameter`/`parameter.m_error_code`, identitas/RBAC ke `portal`, serta template/log pengiriman ke `notification`. HTTP, key Redis, dan metode `ParameterCache` tidak berubah. Siapkan auth/users/notification/parameters dengan histori identik 0001–0009 dan query schema eksplisit, lalu stop/drain seluruh binary lama sebelum migrasi bersama. Objek yang tidak dipindahkan, termasuk enum, `public.refresh_tokens`, sequence publikasi dan histori SQLx, tetap public; role runtime terpisah memerlukan USAGE schema. Core tidak menyimpan/menerapkan migrasi sendiri. Detail urutan, hak database, dan pemulihan: [operations parameters](../../../tmj-rust-parameters/docs/operations.md#coordinated-consumer-cutover).
 
 ## Client consumer
 
